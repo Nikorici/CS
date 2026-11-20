@@ -1,0 +1,202 @@
+\documentclass[11pt,a4paper]{article}
+\input{../../template/utm-lab}
+\newcommand{\labnumber}{3}
+\newcommand{\labtitle}{Polyalphabetic Ciphers: Vigenère}
+\newcommand{\studentname}{Daniel Nicorici}
+\newcommand{\studentgroup}{FAF-243}
+\newcommand{\variant}{16}
+\lstset{inputencoding=utf8,extendedchars=true,literate=
+  {Ă}{{\u{A}}}1 {Â}{{\^{A}}}1 {Î}{{\^{I}}}1 {Ș}{{\textcommabelow{S}}}1 {Ț}{{\textcommabelow{T}}}1
+  {ă}{{\u{a}}}1 {â}{{\^{a}}}1 {î}{{\^{i}}}1 {ș}{{\textcommabelow{s}}}1 {ț}{{\textcommabelow{t}}}1
+  {Ş}{{\c{S}}}1 {Ţ}{{\c{T}}}1 {ş}{{\c{s}}}1 {ţ}{{\c{t}}}1 {è}{{\`{e}}}1 {é}{{\'{e}}}1}
+\lstdefinestyle{py}{style=term,language=Python,keywordstyle=\bfseries,commentstyle=\color{codecomment}}
+\begin{document}
+\utmtitlepage
+\tableofcontents
+\newpage
+
+\plainsection{Purpose of the work}
+
+A monoalphabetic cipher keeps the frequency of every letter, which is why Lab 2 could break it by
+counting. A polyalphabetic cipher changes the substitution from one position to the next, so the
+same plaintext letter is encrypted into different cipher letters and the frequencies flatten out.
+The purpose of this lab is to implement the best known polyalphabetic cipher, the Vigenère cipher,
+for messages in Romanian.
+
+My number in the group register is 16, which is even, so I solved task 3.2: a Vigenère cipher over
+the 31-letter Romanian alphabet, with letters coded 0 to 30. The program accepts only Romanian
+letters and tells the user which characters are allowed, refuses keys shorter than 7 letters,
+removes spaces and converts everything to upper case before encrypting, and lets the user choose
+between encryption and decryption. It is written in Python 3 and needs no external libraries.
+
+\section{The Vigenère cipher over 31 letters}
+
+The Romanian alphabet adds five letters with diacritics to the 26 Latin ones. Each letter gets a
+number from 0 to 30 in alphabetical order (Table~\ref{tab:alpha}).
+
+\begin{table}[H]
+\centering
+\caption{The Romanian alphabet and the code of every letter}\label{tab:alpha}
+\setlength{\tabcolsep}{3.6pt}
+\small
+\begin{tabular}{l*{16}{c}}
+\toprule
+Letter & A & Ă & Â & B & C & D & E & F & G & H & I & Î & J & K & L & M \\
+Code & 0 & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & 11 & 12 & 13 & 14 & 15 \\
+\midrule
+Letter & N & O & P & Q & R & S & Ș & T & Ț & U & V & W & X & Y & Z & \\
+Code & 16 & 17 & 18 & 19 & 20 & 21 & 22 & 23 & 24 & 25 & 26 & 27 & 28 & 29 & 30 & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The key is a word $k_1 k_2 \dots k_t$ of at least 7 letters. It is written under the message and
+repeated as many times as needed, so the letter at position $i$ is shifted by the key letter
+$k_{(i \bmod t)}$. The mathematical model from the handout becomes, for 31 letters:
+\[
+  c_i = (m_i + k_i) \bmod 31, \qquad m_i = (c_i - k_i) \bmod 31 .
+\]
+
+\textbf{Observations:}
+\begin{enumerate}
+  \item \textbf{Every key letter is a Caesar cipher.} With a key of length $t$, positions $1, t+1,
+  2t+1, \dots$ are all shifted by $k_1$, positions $2, t+2, \dots$ by $k_2$, and so on. Vigenère
+  is $t$ interleaved Caesar ciphers, which is why it uses the same operation as Caesar.
+  \item \textbf{The key space grows with the key.} There are $31^t$ keys of length $t$. The
+  shortest allowed key, 7 letters, already gives $31^7 \approx 2.75 \cdot 10^{10}$ keys, and the
+  12-letter key used below gives $31^{12} \approx 7.9 \cdot 10^{17}$.
+  \item \textbf{Modulo 31 instead of 26.} The formulas stay the same; only the modulus and the
+  table of codes change. A shift of 1 now turns \code{Z} (30) into \code{A} (0), and \code{B} has
+  code 3, not 1, because \code{Ă} and \code{Â} come before it.
+\end{enumerate}
+
+\section{Implementation}
+
+The whole cipher is one function, \code{shift}, which adds or subtracts the key codes depending on
+its \code{sign} argument; \code{encrypt} calls it with $+1$ and \code{decrypt} with $-1$, exactly
+as in the two formulas above. The other functions prepare and check the input.
+
+\begin{itemize}
+  \item \code{clean} removes every space (and tab or newline), converts the text to upper case and
+  checks that only letters of the alphabet remain. Any other character raises an error that lists
+  the wrong characters and names the allowed range. The old cedilla forms \code{Ş} and \code{Ţ},
+  which many keyboards still produce, are first replaced by the correct comma-below letters
+  \code{Ș} and \code{Ț}, so a message typed either way is accepted.
+  \item \code{check\_key} applies the same rules to the key and also refuses keys shorter than 7
+  letters.
+  \item \code{ask} repeats a question until the answer passes its check, so a wrong input never
+  stops the program.
+  \item \code{main} shows the menu: 1 encrypts, 2 decrypts, 0 exits.
+\end{itemize}
+
+The alphabet is a parameter of \code{encrypt} and \code{decrypt}, with the Romanian alphabet as the
+default. This let me check the program against the 26-letter example of the handout
+(section~\ref{sec:tests}) without a second implementation.
+
+\lstinputlisting[style=py,caption={vigenere.py},label={fig:code}]{../vigenere.py}
+
+\section{Running the program}
+
+The session below first tries a key that is too short and a message with a digit and punctuation,
+both of which are refused, then encrypts a Romanian sentence with the key \code{criptografie} and
+decrypts the result again. The message is typed with cedilla letters (\code{ş}, \code{ţ}) and in
+lower case on purpose.
+
+\begin{lstlisting}[caption={A session with the program},label={fig:run}]
+$ python3 vigenere.py
+Cifrul Vigenère pentru alfabetul român (31 de litere, codificate 0..30)
+
+1 - criptare, 2 - decriptare, 0 - ieșire: 1
+Cheia: cheie
+Cheia are 5 litere. Lungimea cheii trebuie să fie de cel puțin 7 litere.
+Cheia: criptografie
+Mesajul: Ora 7, la poartă!
+Caractere nepermise: ! , 7. Sunt permise doar literele alfabetului român: A-Z, a-z și Ă Â Î Ș Ț, ă â î ș ț.
+Mesajul: Întâlnirea secretă are loc mâine la ora şapte lângă ţărmul lacului
+Mesajul pregătit: ÎNTÂLNIREASECRETĂARELOCMÂINELAORAȘAPTELÂNGĂȚĂRMULLACULUI
+Criptograma:      MDÂREÂPHEFAJGHNIȚOXVLȚLSEZVȚEOUHAYIȚWVȚRGUHKĂWUAPBIȘOAÂZ
+
+1 - criptare, 2 - decriptare, 0 - ieșire: 2
+Cheia: criptografie
+Criptograma: MDÂREÂPHEFAJGHNIȚOXVLȚLSEZVȚEOUHAYIȚWVȚRGUHKĂWUAPBIȘOAÂZ
+Mesajul decriptat: ÎNTÂLNIREASECRETĂARELOCMÂINELAORAȘAPTELÂNGĂȚĂRMULLACULUI
+
+1 - criptare, 2 - decriptare, 0 - ieșire: 3
+Alegeți 1, 2 sau 0.
+
+1 - criptare, 2 - decriptare, 0 - ieșire: 0
+\end{lstlisting}
+
+To show what the program computes, Table~\ref{tab:hand} repeats the encryption of the first 12
+letters by hand, the same way as the table in the handout. Twelve letters are exactly one period
+of the key.
+
+\begin{table}[H]
+\centering
+\caption{Encryption of the first 12 letters with the key CRIPTOGRAFIE}\label{tab:hand}
+\setlength{\tabcolsep}{4.2pt}
+\small
+\begin{tabular}{l*{12}{c}}
+\toprule
+Plaintext $m$ & Î & N & T & Â & L & N & I & R & E & A & S & E \\
+Code $m_i$ & 11 & 16 & 23 & 2 & 14 & 16 & 10 & 20 & 6 & 0 & 21 & 6 \\
+Key $k$ & C & R & I & P & T & O & G & R & A & F & I & E \\
+Code $k_i$ & 4 & 20 & 10 & 18 & 23 & 17 & 8 & 20 & 0 & 7 & 10 & 6 \\
+$(m_i + k_i) \bmod 31$ & 15 & 5 & 2 & 20 & 6 & 2 & 18 & 9 & 6 & 7 & 0 & 12 \\
+Ciphertext $c$ & M & D & Â & R & E & Â & P & H & E & F & A & J \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observations:}
+\begin{enumerate}
+  \item \textbf{The same letter is encrypted differently.} \code{N} at positions 2 and 6 becomes
+  \code{D} and then \code{Â}, and \code{E} at positions 9 and 12 becomes \code{E} and then
+  \code{J}. In the whole message the 6 letters \code{E} turn into 5 different cipher letters
+  (\code{E}, \code{J}, \code{N}, \code{V}, \code{Ț}) and the 6 letters \code{A} into 4
+  (\code{A}, \code{F}, \code{I}, \code{O}). This is the point of a polyalphabetic cipher: the most
+  frequent plaintext letter no longer produces one most frequent cipher letter, so the attack of
+  Lab 2 does not work.
+  \item \textbf{Different letters can give the same cipher letter.} \code{T} and \code{N} at
+  positions 3 and 6 both become \code{Â}, because $23 + 10 = 33 \equiv 2$ and
+  $16 + 17 = 33 \equiv 2 \pmod{31}$. High and low frequencies get mixed, which is the flattening
+  described at the start of the handout.
+  \item \textbf{A key letter A changes nothing.} Its code is 0, so at position 9 the letter
+  \code{E} stays \code{E}. A key full of A's would leave the message readable, which is one more
+  reason for a long key without repeated patterns.
+  \item \textbf{Spaces are gone for good.} The decrypted text has no spaces, so, as the task
+  says, splitting it back into words is done by the reader.
+\end{enumerate}
+
+\section{Testing}\label{sec:tests}
+
+The test file checks the program against the handout and against itself: the 26-letter example
+\textit{Per aspera ad astra} with key \code{SUPER} must give \code{HYGEJHYGERVUHXIS}, decryption
+must undo encryption for a Romanian message, the wrap-around from \code{Z} to \code{A} must work,
+characters outside the alphabet must be refused, and a 5-letter key must be refused.
+
+\lstinputlisting[style=py,caption={test\_vigenere.py},label={fig:tests}]{../test_vigenere.py}
+
+\begin{lstlisting}[caption={Running the tests},label={fig:testrun}]
+$ python3 test_vigenere.py
+all tests passed
+\end{lstlisting}
+
+\plainsection{Conclusions}
+
+The Vigenère cipher was implemented for the 31-letter Romanian alphabet in about seventy lines of
+Python. Encryption and decryption are the same function with the sign of the key reversed, which
+follows directly from the formulas $c_i = (m_i + k_i) \bmod 31$ and $m_i = (c_i - k_i) \bmod 31$.
+The program reproduces the example from the handout when given the 26-letter alphabet, and every
+Romanian message tested decrypts back to itself.
+
+Most of the work was in preparing the input rather than in the cipher. Spaces have to be removed,
+lower case converted, the cedilla letters Ş and Ţ mapped to the correct Ș and Ț, and every other
+character refused with a message that tells the user what is allowed.
+
+The example shows why the cipher resists the frequency analysis used in Lab 2: one plaintext letter
+is turned into several cipher letters and several plaintext letters share one cipher letter, so the
+counts no longer point at e or a. It is still not secure today: the key repeats, so once the key
+length is found (Kasiski examination, index of coincidence) the cryptogram splits into a few Caesar
+ciphers, each broken by counting letters again.
+\end{document}

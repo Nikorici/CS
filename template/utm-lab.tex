@@ -1,0 +1,122 @@
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{tgheros}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage[varqu,scaled=0.92]{zi4}
+\usepackage{microtype}
+\DisableLigatures[-,<,>]{encoding=T1,family=tt*}
+\usepackage{needspace}
+\usepackage[a4paper,top=2.5cm,bottom=2.5cm,left=2.5cm,right=2.2cm]{geometry}
+\usepackage{graphicx}
+\graphicspath{{../../template/}{figures/}}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{upquote}
+\usepackage{titlesec}
+\usepackage{tocloft}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{float}
+\usepackage[hidelinks]{hyperref}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+\setlist{itemsep=0.3em,topsep=0.3em}
+\pagestyle{plain}
+
+\titleformat{\section}{\Large\bfseries}{\thesection}{0.9em}{}
+\titleformat{\subsection}{\large\bfseries}{\thesubsection}{0.9em}{}
+\titlespacing*{\section}{0pt}{1.6em}{0.7em}
+\titlespacing*{\subsection}{0pt}{1.2em}{0.5em}
+
+\renewcommand{\contentsname}{Cuprins}
+\renewcommand{\cfttoctitlefont}{\LARGE\bfseries}
+\renewcommand{\cftsecfont}{\bfseries}
+\renewcommand{\cftsecpagefont}{\bfseries}
+\renewcommand{\cftsubsecfont}{\small}
+\renewcommand{\cftsubsecpagefont}{\small}
+\setlength{\cftbeforesecskip}{0.6em}
+
+\definecolor{codebg}{HTML}{F6F6F6}
+\definecolor{coderule}{HTML}{8C8C8C}
+\definecolor{codenum}{HTML}{8C8C8C}
+\definecolor{codecomment}{HTML}{6A6A6A}
+
+\lstdefinestyle{term}{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  frame=single,
+  rulecolor=\color{coderule},
+  framesep=4pt,
+  numbers=left,
+  numberstyle=\tiny\color{codenum},
+  numbersep=9pt,
+  xleftmargin=1.4em,
+  breaklines=true,
+  postbreak=\mbox{\textcolor{codenum}{$\hookrightarrow$}\space},
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  upquote=true,
+  aboveskip=0.9em,
+  belowskip=0.9em
+}
+\lstdefinestyle{ccode}{
+  style=term,
+  language=C,
+  keywordstyle=\bfseries,
+  commentstyle=\color{codecomment},
+  morekeywords={uint,uint64}
+}
+\lstset{style=term,captionpos=b}
+
+\usepackage{caption}
+\captionsetup[lstlisting]{labelsep=endash,justification=centering,singlelinecheck=false,font=small,skip=7pt}
+\captionsetup[table]{labelsep=endash,font=small,skip=6pt}
+\renewcommand{\lstlistingname}{Figure}
+\AtBeginDocument{\counterwithin{lstlisting}{section}\counterwithin{table}{section}}
+
+\newcommand{\plainsection}[1]{\section*{#1}\addcontentsline{toc}{section}{#1}}
+\newcommand{\code}[1]{\texttt{#1}}
+
+\newcommand{\utmtitlepage}{%
+\begin{titlepage}
+  \centering
+  \includegraphics[width=4.3cm]{utm-logo.jpeg}\par
+  \vspace{1.3cm}
+  {\large\bfseries UNIVERSITATEA TEHNICĂ A MOLDOVEI\par}
+  \vspace{0.25cm}
+  Facultatea Calculatoare, Informatică și Microelectronică\par
+  Departamentul Ingineria Software și Automatică\par
+  \vspace{2.6cm}
+  {\Large\bfseries LUCRARE DE LABORATOR NR.~\labnumber\par}
+  \vspace{0.2cm}
+  {\LARGE\bfseries \labtitle\par}
+  \vspace{0.45cm}
+  Disciplina: Criptografie și Securitate\par
+  \vspace{0.2cm}
+  Varianta \variant\par
+  \vspace{2.8cm}
+  \begin{minipage}[t]{0.46\textwidth}
+    \raggedright
+    \textbf{A efectuat:}\\
+    student gr. \studentgroup\\
+    \studentname
+  \end{minipage}\hfill
+  \begin{minipage}[t]{0.46\textwidth}
+    \raggedleft
+    \textbf{A verificat:}\\
+    conf. univ., dr. Aureliu \textsc{Zgureanu}
+  \end{minipage}
+  \vfill
+  Chișinău — 2026\par
+\end{titlepage}}
+
+\usepackage{textcomp}
+\usepackage{framed}
+\newenvironment{cipherbox}{%
+  \def\FrameCommand{\fboxsep=6pt\fboxrule=0.4pt\fcolorbox{coderule}{codebg}}%
+  \MakeFramed{\advance\hsize-\width\FrameRestore}%
+  \ttfamily\footnotesize\raggedright\frenchspacing\setlength{\parskip}{0pt}}%
+  {\par\endMakeFramed}
