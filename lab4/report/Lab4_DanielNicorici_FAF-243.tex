@@ -1,0 +1,207 @@
+\documentclass[11pt,a4paper]{article}
+\input{../../template/utm-lab}
+\newcommand{\labnumber}{4}
+\newcommand{\labtitle}{Block Ciphers: the DES Algorithm}
+\newcommand{\studentname}{Daniel Nicorici}
+\newcommand{\studentgroup}{FAF-243}
+\newcommand{\variant}{16}
+\lstset{inputencoding=utf8,extendedchars=true,literate=
+  {Ă}{{\u{A}}}1 {Â}{{\^{A}}}1 {Î}{{\^{I}}}1 {Ș}{{\textcommabelow{S}}}1 {Ț}{{\textcommabelow{T}}}1
+  {ă}{{\u{a}}}1 {â}{{\^{a}}}1 {î}{{\^{i}}}1 {ș}{{\textcommabelow{s}}}1 {ț}{{\textcommabelow{t}}}1}
+\lstdefinestyle{py}{style=term,language=Python,keywordstyle=\bfseries,commentstyle=\color{codecomment}}
+\begin{document}
+\utmtitlepage
+\tableofcontents
+\newpage
+
+\plainsection{Purpose of the work}
+
+The purpose of this lab is to study the Data Encryption Standard (DES), the block cipher
+standardised in FIPS 46, and to implement one element of it in a program that prints the tables it
+uses and every intermediate step.
+
+The task is chosen with the formula $nr\_sarcina = n \bmod 11$, where $n$ is the student's number
+in the group register. My number is $n = 16$, and $16 \bmod 11 = 5$, so I solved task 2.5:
+\textit{given K+, determine all 16 round keys $K_i$}. This is the DES key schedule. The program is
+written in Python 3 with no external libraries. The user can type K+ or let the program generate
+it at random.
+
+\section{The DES algorithm}
+
+Because the defence covers the whole algorithm, this section describes all of it before focusing
+on the key schedule.
+
+\subsection{Overview}
+
+DES is a symmetric block cipher. It encrypts a 64-bit block of plaintext into a 64-bit block of
+ciphertext with a 64-bit key, of which only 56 bits are used: every eighth bit (bits 8, 16, \dots,
+64) is a parity bit. The same key decrypts. DES is a Feistel cipher with 16 rounds, so encryption
+and decryption run the same steps, and only the order of the round keys differs.
+
+\subsection{Encrypting one block}
+
+\begin{enumerate}
+  \item \textbf{Initial permutation.} The 64 bits of the block are reordered by the table IP and
+  split into a left half $L_0$ and a right half $R_0$ of 32 bits each.
+  \item \textbf{16 rounds.} For $i = 1, \dots, 16$:
+  \[
+    L_i = R_{i-1}, \qquad R_i = L_{i-1} \oplus f(R_{i-1}, K_i).
+  \]
+  Only the right half goes through the function $f$; the left half is just XORed with its result.
+  \item \textbf{Final permutation.} After round 16 the halves are swapped, giving $R_{16}L_{16}$,
+  and the inverse permutation $IP^{-1}$ produces the ciphertext.
+\end{enumerate}
+
+The round function $f(R_{i-1}, K_i)$ has four steps:
+\begin{enumerate}
+  \item \textbf{Expansion E.} The 32 bits of $R_{i-1}$ are expanded to 48 bits; 16 of them are
+  repeated.
+  \item \textbf{Key mixing.} The 48 bits are XORed with the round key: $K_i \oplus E(R_{i-1})$.
+  \item \textbf{S-boxes.} The result is cut into eight 6-bit groups $B_1 \dots B_8$. For each group,
+  the first and last bits form the row (0--3) and the four middle bits the column (0--15) of the
+  table $S_j$, which gives a 4-bit number. The eight outputs together are 32 bits. The S-boxes are
+  the only non-linear step of DES, and its security rests on them.
+  \item \textbf{Permutation P.} The 32 bits are reordered by the table P.
+\end{enumerate}
+
+To decrypt, the same algorithm runs with the round keys in reverse order, $K_{16}, \dots, K_1$.
+
+\subsection{The key schedule (task 2.5)}
+
+The round keys come from the 64-bit key in three steps:
+\begin{enumerate}
+  \item \textbf{PC-1.} The permutation PC-1 keeps 56 of the 64 key bits (it drops the parity bits)
+  and reorders them. The result is $K^+$, the input of my program.
+  \item \textbf{Split and rotate.} $K^+$ is split into two 28-bit halves $C_0$ and $D_0$. For
+  $i = 1, \dots, 16$, $C_i$ and $D_i$ are obtained from $C_{i-1}$ and $D_{i-1}$ by a cyclic shift to
+  the left by 1 or 2 positions, according to Table~\ref{tab:shifts}.
+  \item \textbf{PC-2.} The 56-bit concatenation $C_iD_i$ goes through PC-2
+  (Table~\ref{tab:pc2}), which selects 48 of its bits in a fixed order. The result is the round key
+  $K_i$: bit $j$ of $K_i$ is bit number PC-2$[j]$ of $C_iD_i$.
+\end{enumerate}
+
+\begin{table}[H]
+\centering
+\caption{Number of left shifts in each round}\label{tab:shifts}
+\setlength{\tabcolsep}{4pt}
+\small
+\begin{tabular}{l*{16}{c}}
+\toprule
+Round $i$ & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & 11 & 12 & 13 & 14 & 15 & 16 \\
+Shifts & 1 & 1 & 2 & 2 & 2 & 2 & 2 & 2 & 1 & 2 & 2 & 2 & 2 & 2 & 2 & 1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Permuted choice PC-2}\label{tab:pc2}
+\small
+\begin{tabular}{*{6}{c}}
+\toprule
+14 & 17 & 11 & 24 & 1 & 5 \\
+3 & 28 & 15 & 6 & 21 & 10 \\
+23 & 19 & 12 & 4 & 26 & 8 \\
+16 & 7 & 27 & 20 & 13 & 2 \\
+41 & 52 & 31 & 37 & 47 & 55 \\
+30 & 40 & 51 & 45 & 33 & 48 \\
+44 & 49 & 39 & 56 & 34 & 53 \\
+46 & 42 & 50 & 36 & 29 & 32 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Observations:}
+\begin{enumerate}
+  \item \textbf{The shifts add up to 28.} Four rounds shift by 1 and twelve by 2, so
+  $4 + 24 = 28$, a full turn of a 28-bit half. Therefore $C_{16} = C_0$ and $D_{16} = D_0$, and a
+  decryptor can produce the keys in reverse order by rotating to the right.
+  \item \textbf{PC-2 drops 8 bits.} Positions 9, 18, 22, 25, 35, 38, 43 and 54 never appear in
+  PC-2, so 48 of the 56 bits reach each round key. The first 24 entries are all $\le 28$ and the
+  last 24 all $> 28$: the first half of $K_i$ comes only from $C_i$ and the second half only from
+  $D_i$.
+  \item \textbf{Every key bit is used often.} Because the halves rotate, a different selection of
+  bits reaches each round. Each of the 56 bits of $K^+$ appears in 12 to 15 of the 16 round keys,
+  so every key bit affects many rounds.
+\end{enumerate}
+
+\section{Implementation}
+
+The key schedule itself is the short function \code{round\_keys}. It splits $K^+$ into
+\code{c} and \code{d}, and for every entry of \code{SHIFTS} it rotates both halves with string
+slicing (\code{c[shift:] + c[:shift]}) and builds $K_i$ by reading $C_iD_i$ at the 48 positions
+of \code{PC2}. The table positions start at 1, so the code subtracts 1 to index the string.
+
+\begin{itemize}
+  \item \code{parse\_kplus} accepts $K^+$ as 56 binary digits (spaces allowed) or as 14 hexadecimal
+  digits, and refuses anything else with a message that states the allowed format.
+  \item \code{show\_tables} prints the two tables the algorithm uses.
+  \item \code{show\_schedule} prints $K^+$, $C_0$, $D_0$ and, for every round, the shift, $C_i$,
+  $D_i$, $C_iD_i$ and $K_i$ in binary (grouped by 6 bits, the size of an S-box input) and in hex.
+  For round 1 it also shows PC-2 at work, bit by bit.
+  \item \code{main} is the menu: 1 reads $K^+$ from the user, 2 generates a random $K^+$ with the
+  \code{secrets} module, 0 exits.
+\end{itemize}
+
+\lstinputlisting[style=py,caption={des\_keys.py},label={fig:code}]{../des_keys.py}
+
+\section{Running the program}
+
+The first run uses $K^+$ from the worked example of J.~Orlin Grabbe's tutorial \textit{The DES
+Algorithm Illustrated}, so every value can be compared with a published source. It then tries an
+invalid $K^+$ and an invalid menu choice.
+
+\lstinputlisting[caption={Key schedule for the tutorial's K+},label={fig:run}]{run_example.txt}
+
+The second run uses a random $K^+$. Rounds 2 to 15 are left out to save space.
+
+\lstinputlisting[caption={Key schedule for a random K+ (excerpt)},label={fig:random}]{run_random.txt}
+
+\textbf{Observations:}
+\begin{enumerate}
+  \item \textbf{The results match the tutorial.} $K_1 = $
+  \code{000110 110000 001011 101111 111111 000111 000001 110010} and $K_{16} = $
+  \code{110010 110011 110110 001011 000011 100001 011111 110101}, as in Grabbe's tutorial, and so
+  do all the keys in between (checked automatically in section~\ref{sec:tests}).
+  \item \textbf{$C_{16}D_{16} = K^+$.} In Figure~\ref{fig:run}, $C_{16}$ and $D_{16}$ are the same
+  as $C_0$ and $D_0$, as predicted by the sum of the shifts.
+  \item \textbf{Round 1 shows PC-2 directly.} The first row of PC-2 is 14, 17, 11, 24, 1, 5. The
+  bits of $C_1D_1$ at those positions are 0, 0, 0, 1, 1, 0, which is exactly the first group
+  \code{000110} of $K_1$.
+\end{enumerate}
+
+\section{Testing}\label{sec:tests}
+
+The test file compares all 16 round keys, and $C_1$ and $D_1$, with the values printed in Grabbe's
+tutorial. It also checks that $C_{16}D_{16} = K^+$, that the hexadecimal form of $K^+$ gives the
+same result, which 8 positions PC-2 drops, that the four DES weak keys give 16 identical round keys,
+and that invalid inputs are refused.
+
+\lstinputlisting[style=py,caption={test\_des\_keys.py},label={fig:tests}]{../test_des_keys.py}
+
+\begin{lstlisting}[caption={Running the tests},label={fig:testrun}]
+$ python3 test_des_keys.py
+all tests passed
+\end{lstlisting}
+
+The weak-key test shows a real flaw of the schedule. When $C_0$ and $D_0$ are each all zeros or all
+ones, rotating them changes nothing, so every round uses the same key. Encrypting twice with such
+a key gives back the plaintext, which is why these four keys must never be used.
+
+\plainsection{Conclusions}
+
+I implemented the DES key schedule: from the 56-bit $K^+$ the program produces the halves
+$C_i$ and $D_i$ by cyclic left shifts and selects the 48-bit round keys $K_1, \dots, K_{16}$ with
+PC-2, printing both tables and every intermediate value. All 16 keys match the worked example of a
+published DES tutorial.
+
+The key schedule is simple: rotations and fixed bit selections, with no arithmetic. Its job is to
+give each round a different 48-bit view of the same 56-bit key, so that each key bit enters 12 to 15
+of the rounds. Its structure also explains two properties of DES: the shifts sum to 28, so the
+schedule returns to $K^+$ and can be run backwards for decryption, and keys with constant halves
+are weak, because rotation cannot change them.
+
+The real weakness of DES is not the schedule but the key length. 56 bits give $2^{56} \approx 7.2
+\cdot 10^{16}$ keys, few enough that special hardware found a DES key by brute force in 1998. This
+is why FIPS 46-3 added Triple DES and why DES has since been replaced by AES.
+\end{document}
