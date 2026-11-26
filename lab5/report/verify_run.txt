@@ -1,0 +1,18 @@
+$ python3 verify.py report/output.txt
+OK    ASCII codes of the message
+OK    hex = ASCII bytes in hexadecimal
+OK    m = hex read as a number
+OK    RSA: p and q are prime and different
+OK    RSA: n = p*q has 2048 bits
+OK    RSA: phi = (p-1)(q-1), gcd(e, phi) = 1
+OK    RSA: e*d = 1 mod phi
+OK    RSA: c = m^e mod n
+OK    RSA: c^d mod n = m, text matches
+OK    p is the handout's 2048-bit safe prime, g = 2
+OK    ElGamal: 1 < x < p-1, beta = g^x mod p
+OK    ElGamal: y1 = g^k, y2 = m*beta^k mod p
+OK    ElGamal: y2 * y1^(p-1-x) mod p = m, text matches
+OK    DH: 1 < a, b < p-1, A = g^a, B = g^b mod p
+OK    DH: B^a = A^b mod p (same shared key)
+OK    AES-256 key = top 256 bits of the shared key
+16/16 checks passed

@@ -1,0 +1,251 @@
+\documentclass[11pt,a4paper]{article}
+\input{../../template/utm-lab}
+\input{tool}
+\newcommand{\labnumber}{5}
+\newcommand{\labtitle}{Public-Key Cryptography: RSA, ElGamal and Diffie-Hellman}
+\newcommand{\studentname}{Daniel Nicorici}
+\newcommand{\studentgroup}{FAF-243}
+\newcommand{\variant}{}
+\lstdefinestyle{wl}{style=term,language=Mathematica,keywordstyle=\bfseries}
+\lstdefinestyle{py}{style=term,language=Python,keywordstyle=\bfseries}
+\begin{document}
+\utmtitlepage
+\tableofcontents
+\newpage
+
+\plainsection{Purpose of the work}
+
+In a public-key cryptosystem every user has two keys: a public key that anyone may use to encrypt
+or verify, and a private key that only the owner knows. The purpose of this lab is to generate keys
+and to encrypt and decrypt a message with the two classic public-key algorithms, RSA and ElGamal,
+and to perform a Diffie-Hellman key exchange that gives Alice and Bob a shared 256-bit key for AES.
+
+The message is my name written as in the handout, surname first: $m = $ \textit{Nicorici Daniel}.
+RSA uses a modulus $n$ of 2048 bits. ElGamal and Diffie-Hellman use the 2048-bit prime $p$ and the
+generator $g = 2$ given in the handout.
+
+The handout asks for Wolfram|Alpha or Wolfram Mathematica. Typing several 617-digit numbers into
+Wolfram|Alpha is not practical, so all three tasks are written as one Wolfram Language program
+(the language of Mathematica), using exactly the functions recommended in the handout:
+\code{RandomPrime}, \code{RandomInteger}, \code{PowerMod}, \code{Mod}, \code{IntegerDigits}. The
+results in this report were produced by running it in \tool. Every step was then checked
+independently by a short Python script (section~\ref{sec:verify}).
+
+\section{The program and the message}
+
+\subsection{How the program prints its results}
+
+The program is one notebook cell. Its first line defines a helper, \code{show}, which prints
+\textit{label = value} and writes integers in full, so even 617-digit numbers are printed digit by
+digit. Each section below shows the lines of the program for one task and the lines they print.
+
+\lstinputlisting[style=wl,firstline=1,lastline=1,firstnumber=1,caption={The helper that prints every intermediate value}]{../lab5.wl}
+
+\subsection{From text to a number}
+
+RSA and ElGamal work on integers, so the message must first become a number. As the handout says,
+each character is replaced by its ASCII code in hexadecimal, the hexadecimal digits are written
+one after another, and the result is read as one hexadecimal number and converted to decimal
+(Table~\ref{tab:ascii}).
+
+\begin{table}[H]
+\centering
+\caption{The message in ASCII}\label{tab:ascii}
+\setlength{\tabcolsep}{3.3pt}
+\small
+\begin{tabular}{l*{15}{c}}
+\toprule
+Character & N & i & c & o & r & i & c & i & \textvisiblespace & D & a & n & i & e & l \\
+Decimal & 78 & 105 & 99 & 111 & 114 & 105 & 99 & 105 & 32 & 68 & 97 & 110 & 105 & 101 & 108 \\
+Hex & 4E & 69 & 63 & 6F & 72 & 69 & 63 & 69 & 20 & 44 & 61 & 6E & 69 & 65 & 6C \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\lstinputlisting[style=wl,firstline=3,lastline=11,firstnumber=3,caption={Converting the message to a number}]{../lab5.wl}
+\lstinputlisting[caption={The message as a number}]{out_msg.txt}
+
+\code{ToCharacterCode} gives the ASCII codes, \code{IntegerString[\dots, 16, 2]} writes each code as
+two hexadecimal digits, and \code{FromDigits[hex, 16]} reads the joined string as a base-16 number.
+The result, $m = 407136686053340208478179658767623532$, has 119 bits, far fewer than the 2048 bits
+of the moduli below, as both algorithms require ($m < n$ for RSA and $m < p$ for ElGamal).
+Decryption reverses the conversion with \code{IntegerDigits[m, 256]}, which splits the number back
+into bytes, and \code{FromCharacterCode}, which turns the bytes back into characters.
+
+\section{RSA (task 2.1)}
+
+\subsection{The algorithm}
+
+\textbf{Key generation.}
+\begin{enumerate}
+  \item Choose two different random primes $p$ and $q$ of 1024 bits each. The product of two
+  1024-bit numbers has 2047 or 2048 bits, so the program repeats the choice until $n = pq$ has
+  exactly 2048 bits, as the task requires.
+  \item Compute the modulus $n = p \cdot q$ and Euler's function $\varphi(n) = (p - 1)(q - 1)$.
+  \item Choose the public exponent $e$ with $\gcd(e, \varphi(n)) = 1$. I use $e = 65537 = 2^{16} + 1$,
+  the value used in practice: it is prime and has only two 1-bits, so encryption is fast. The
+  program checks the gcd together with $p$ and $q$ and chooses new primes if it is not 1.
+  \item Compute the private exponent $d = e^{-1} \bmod \varphi(n)$, the number with
+  $e \cdot d \equiv 1 \pmod{\varphi(n)}$. \code{PowerMod[e, -1, phi]} finds it with the extended
+  Euclidean algorithm.
+\end{enumerate}
+The public key is $(n, e)$. The private key is $d$; $p$, $q$ and $\varphi(n)$ must also stay
+secret, because anyone who knows them can compute $d$.
+
+\textbf{Encryption} (by anyone, with the public key): $c = m^{e} \bmod n$.
+
+\textbf{Decryption} (by the owner, with the private key): $m = c^{d} \bmod n$.
+
+\textbf{Why it works.} Since $e d = 1 + t\,\varphi(n)$ for some integer $t$, Euler's theorem gives
+$c^{d} = m^{e d} = m \cdot (m^{\varphi(n)})^{t} \equiv m \pmod{n}$.
+
+\subsection{Computation}
+
+\lstinputlisting[style=wl,firstline=13,lastline=34,firstnumber=13,caption={RSA in Wolfram Language}]{../lab5.wl}
+\lstinputlisting[caption={RSA keys, cryptogram and decryption}]{out_rsa.txt}
+
+\textbf{Observations:}
+\begin{enumerate}
+  \item \textbf{The decryption gives back the name.} \code{rsa.decrypted} equals $m$ and
+  \code{rsa.text} is \textit{Nicorici Daniel}. The checks $\gcd(e, \varphi) = 1$ and
+  $e \cdot d \bmod \varphi = 1$ both print 1, and $n$ has 2048 bits.
+  \item \textbf{The cryptogram is as long as $n$.} The 119-bit message becomes a number of up to
+  2048 bits, because $c$ can be any value below $n$.
+  \item \textbf{Security rests on factoring.} $n$ and $e$ are public. Computing $d$ needs
+  $\varphi(n)$, which needs $p$ and $q$, and nobody knows how to factor a 2048-bit $n$ in reasonable
+  time.
+  \item \textbf{Textbook RSA is deterministic.} Encrypting the same $m$ with the same key always
+  gives the same $c$, so an attacker can test guesses. Real systems add random padding (OAEP) to
+  the message before encrypting.
+\end{enumerate}
+
+\section{ElGamal (task 2.2)}
+
+\subsection{The public parameters}
+
+ElGamal works in the group of integers modulo a prime. The handout gives the prime $p$ and the
+generator $g = 2$, which every user shares. The 617 digits of $p$ are written as eight strings of
+80 digits only so that the code fits on the screen; \code{StringJoin} glues them together and
+\code{ToExpression} reads the result as one integer.
+
+\lstinputlisting[style=wl,firstline=36,lastline=48,firstnumber=36,caption={The public parameters from the handout}]{../lab5.wl}
+\lstinputlisting[caption={The parameters as printed}]{out_params.txt}
+
+The given $p$ is not an arbitrary prime: its hexadecimal form begins with
+\code{FFFFFFFFFFFFFFFFADF85458A2BB4A9A} and ends with \code{FFFFFFFFFFFFFFFF}, which is the 2048-bit
+group \code{ffdhe2048} standardised in RFC 7919 for Diffie-Hellman. It is a \textit{safe prime}:
+$q = (p - 1)/2$ is also prime, which I checked in section~\ref{sec:verify}. A safe prime makes the
+discrete logarithm problem as hard as possible for a modulus of its size.
+
+\subsection{The algorithm}
+
+\textbf{Key generation} (Bob):
+\begin{enumerate}
+  \item Choose a random private key $x$ with $1 < x < p - 1$.
+  \item Compute the public key $\beta = g^{x} \bmod p$ and publish $(p, g, \beta)$.
+\end{enumerate}
+
+\textbf{Encryption} (Alice, with Bob's public key):
+\begin{enumerate}
+  \item Choose a random one-time number $k$ with $1 < k < p - 1$.
+  \item Compute $y_1 = g^{k} \bmod p$ and $y_2 = m \cdot \beta^{k} \bmod p$.
+  \item Send the pair $(y_1, y_2)$.
+\end{enumerate}
+
+\textbf{Decryption} (Bob, with $x$): $m = y_2 \cdot (y_1^{x})^{-1} \bmod p = y_2 \cdot y_1^{\,p-1-x} \bmod p$.
+
+\textbf{Why it works.} $y_1^{x} = g^{k x} = (g^{x})^{k} = \beta^{k}$, so dividing $y_2$ by
+$y_1^{x}$ removes the mask $\beta^{k}$ and leaves $m$. The inverse of $y_1^{x}$ is $y_1^{\,p-1-x}$,
+because $y_1^{\,p-1} \equiv 1 \pmod p$ by Fermat's little theorem. This avoids computing a modular
+inverse separately.
+
+\subsection{Computation}
+
+\lstinputlisting[style=wl,firstline=50,lastline=62,firstnumber=50,caption={ElGamal in Wolfram Language}]{../lab5.wl}
+\lstinputlisting[caption={ElGamal keys, cryptogram and decryption}]{out_elgamal.txt}
+
+\textbf{Observations:}
+\begin{enumerate}
+  \item \textbf{The decryption gives back the name.} \code{elgamal.decrypted} equals $m$ and
+  \code{elgamal.text} is \textit{Nicorici Daniel}.
+  \item \textbf{The cryptogram is twice as long as the message block.} It is the pair
+  $(y_1, y_2)$, two numbers below $p$, about 4096 bits in total.
+  \item \textbf{ElGamal is randomised.} Because $k$ is new for every message, encrypting the same
+  name twice gives two different cryptograms. This is the property textbook RSA lacks.
+  \item \textbf{$k$ must never be reused.} If two messages are encrypted with the same $k$, they
+  share the same mask $\beta^{k}$, and knowing one message reveals the other:
+  $m_2 = m_1 \cdot y_2' \cdot y_2^{-1} \bmod p$.
+  \item \textbf{Security rests on the discrete logarithm.} Finding $x$ from $\beta = g^{x} \bmod p$
+  is the discrete logarithm problem, which is infeasible for a 2048-bit safe prime.
+\end{enumerate}
+
+\section{Diffie-Hellman key exchange for AES-256 (task 3)}
+
+\subsection{The algorithm}
+
+Alice and Bob want to use AES-256, a symmetric cipher, so they need the same secret 256-bit key,
+but they can only talk over an open channel. Diffie-Hellman lets them build that key in public.
+Both use the public $p$ and $g = 2$ from the handout.
+
+\begin{enumerate}
+  \item Alice chooses a random secret $a$ and Bob a random secret $b$. As the algorithm requires,
+  both are drawn uniformly from $2, \dots, p - 2$: the values $0$, $1$ and $p - 1$ are excluded
+  because they would give the trivial public values $1$, $g$ and $\pm 1$.
+  \item Alice computes $A = g^{a} \bmod p$ and sends it to Bob. Bob computes $B = g^{b} \bmod p$
+  and sends it to Alice.
+  \item Alice computes $K = B^{a} \bmod p$ and Bob computes $K = A^{b} \bmod p$. Both get the same
+  number, because $B^{a} = g^{b a} = g^{a b} = A^{b}$.
+  \item AES-256 needs exactly 256 bits, while $K$ is a 2048-bit number. Both sides take the 256
+  most significant bits of the 2048-bit representation of $K$:
+  $K_{\mathrm{AES}} = \lfloor K / 2^{1792} \rfloor$, computed with \code{Quotient}.
+\end{enumerate}
+
+\subsection{Computation}
+
+\lstinputlisting[style=wl,firstline=64,lastline=80,firstnumber=64,caption={Diffie-Hellman and the AES key in Wolfram Language}]{../lab5.wl}
+\lstinputlisting[caption={The exchange and the shared AES-256 key}]{out_dh.txt}
+
+\textbf{Observations:}
+\begin{enumerate}
+  \item \textbf{Both sides get the same key.} \code{dh.keyAlice} and \code{dh.keyBob} are equal and
+  \code{dh.equal} prints \code{True}, although $a$ and $b$ never left their owners.
+  \item \textbf{An eavesdropper sees $p$, $g$, $A$ and $B$.} To find $K$ she would need $a$ or $b$,
+  which means solving a discrete logarithm modulo a 2048-bit prime.
+  \item \textbf{The AES key has exactly 256 bits.} It is printed as 64 hexadecimal digits and as
+  256 binary digits. Leading zeros are kept, so the key length does not depend on the value.
+  \item \textbf{In practice a key derivation function is used.} Real protocols such as TLS do not
+  cut $K$ directly; they pass it through a key derivation function (for example HKDF with SHA-256),
+  which spreads the randomness of all 2048 bits over the 256-bit key.
+  \item \textbf{Plain Diffie-Hellman does not authenticate.} An attacker in the middle can run one
+  exchange with Alice and another with Bob and read everything. Real protocols sign $A$ and $B$
+  so each side knows who it is talking to.
+\end{enumerate}
+
+\section{Verification}\label{sec:verify}
+
+To make sure every printed value is right, a Python script reads the output of the program and
+recomputes each step on its own, with Python's built-in big integers: it tests that $p$ and $q$
+are prime (Miller-Rabin), that $n = pq$ has 2048 bits, that $e d \equiv 1 \pmod{\varphi(n)}$, that
+both encryptions and decryptions give the printed values and recover the name, that the
+Diffie-Hellman keys agree, and that the AES key is the top 256 bits of the shared key. It also
+confirms that the handout's $p$ is a safe prime.
+
+\lstinputlisting[style=py,caption={verify.py},label={fig:verify}]{../verify.py}
+\lstinputlisting[caption={All checks pass}]{verify_run.txt}
+
+\plainsection{Conclusions}
+
+I generated a 2048-bit RSA key pair, encrypted my name with the public key and decrypted it with the
+private key. I did the same with ElGamal over the 2048-bit prime from the handout, and I ran a
+Diffie-Hellman exchange between Alice and Bob that ended with the same 256-bit AES key on both
+sides. Every value was checked independently.
+
+The three algorithms rest on the same tool, modular exponentiation, which is easy to compute and
+hard to reverse. RSA is hard to break because factoring $n$ is hard. ElGamal and Diffie-Hellman are
+hard to break because computing discrete logarithms is hard.
+
+The lab also showed why these algorithms are used the way they are. Public-key operations on
+2048-bit numbers are slow and their cryptograms are large, so in practice they are not used to
+encrypt data directly. They are used to agree on or transport a short symmetric key, exactly as in
+task 3, and the data itself is then encrypted with a fast symmetric cipher such as AES.
+\end{document}
